@@ -136,6 +136,9 @@ private class TreeEncoder[Prog <: Program](val sourceProgram: Prog)
       case s.Assert(pred, error, body) =>
         transform(body)
 
+      case s.ReachabilityProbe(body) =>
+        transform(body)
+
       case s.Decreases(measure, body) =>
         transform(body)
 

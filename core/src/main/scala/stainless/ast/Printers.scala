@@ -62,6 +62,10 @@ trait Printer extends inox.ast.Printer {
       p"""|assert($pred)
           |$body"""
 
+    case ReachabilityProbe(body) =>
+      p"""|reachabilityProbe
+          |$body"""
+
     case Ensuring(body, post) =>
       p"""|{
           |  $body
