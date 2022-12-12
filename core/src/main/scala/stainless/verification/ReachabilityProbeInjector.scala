@@ -11,9 +11,13 @@ class ReachabilityProbeInjector(override val s: ast.Trees, override val t: ast.T
   extends transformers.ConcreteTreeTransformer(s, t) {
     override def transform(e: s.Expr): t.Expr = e match {
         // can the pattern have side effects ?
-        case s.MatchCase(pattern, optGuard, rhs) => t.MatchCase(pattern, optGuard, t.Seq(ReachabilityProbe, rhs))
+        case s.MatchExpr(scrutinee, cases) => t.MatchExpr(transform(scrutinee), cases.map(casee => casee match {
+            case s.MatchCase(pattern, optGuard, rhs) => t.MatchCase(pattern, transform(optGuard), t.ReachabilityProbe(transform(rhs)))
+        }))
 
-        case s.IfExpr(cond, thenn, elze) => t.IfExpr(cond, t.Seq(ReachabilityProbe, thenn), t.Seq(ReachabilityProbe, elze))
+        case s.IfExpr(cond, thenn, elze) => t.IfExpr(transform(cond), t.ReachabilityProbe(transform(thenn)), t.ReachabilityProbe(transform(elze)))
+
+        case _ => super.transform(_) // go through the other expressions and transform recursively
 
     }
 }
