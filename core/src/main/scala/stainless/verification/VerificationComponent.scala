@@ -59,6 +59,7 @@ class VerificationRun private(override val component: VerificationComponent.type
 
   override def createPipeline = {
     pipeline andThen
+    extraction.utils.DebugPipeline("ReachabilityProbeInjector", ReachabilityProbeInjector(extraction.trees)) andThen
     extraction.utils.DebugPipeline("MeasureInference", MeasureInference(extraction.trees)) andThen
     extraction.utils.DebugPipeline("PartialEvaluation", PartialEvaluation(extraction.trees))
   }

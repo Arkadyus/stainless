@@ -17,7 +17,17 @@ class ReachabilityProbeInjector(override val s: ast.Trees, override val t: ast.T
 
         case s.IfExpr(cond, thenn, elze) => t.IfExpr(transform(cond), t.ReachabilityProbe(transform(thenn)), t.ReachabilityProbe(transform(elze)))
 
-        case _ => super.transform(_) // go through the other expressions and transform recursively
+        case _ => super.transform(e) // go through the other expressions and transform recursively
 
     }
+}
+
+object ReachabilityProbeInjector { self =>
+  def apply(tr: Trees)(using inox.Context): extraction.ExtractionPipeline {
+    val s: tr.type
+    val t: tr.type
+  } = {
+    class Impl(override val s: tr.type, override val t: tr.type) extends ReachabilityProbeInjector(s, t)
+    new Impl(tr, tr)
+  }
 }
