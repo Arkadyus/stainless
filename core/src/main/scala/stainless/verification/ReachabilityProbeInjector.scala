@@ -1,29 +1,53 @@
+
 /* Copyright 2009-2021 EPFL, Lausanne */
 
 package stainless
 package verification
 
-/**
- * Transform trees by inserting Reachability probes. s is the input tree, t is the transformed tree
- */
-class ReachabilityProbeInjector(override val s: ast.Trees, override val t: ast.Trees)
-                       (using val symbols: s.Symbols)
-  extends transformers.ConcreteTreeTransformer(s, t) {
-    override def transform(e: s.Expr): t.Expr = e match {
-        // can the pattern have side effects ?
-        case s.MatchExpr(scrutinee, cases) => t.MatchExpr(transform(scrutinee), cases.map(casee => casee match {
-            case s.MatchCase(pattern, optGuard, rhs) => t.MatchCase(pattern, transform(optGuard), t.ReachabilityProbe(transform(rhs)))
-        }))
+class ReachabilityProbeInjector(override val s: extraction.Trees,
+                     override val t: extraction.Trees)
+                    (using override val context: inox.Context)
+  extends transformers.Transformer with extraction.SimpleFunctions with extraction.IdentitySorts { self =>
 
-        case s.IfExpr(cond, thenn, elze) => t.IfExpr(transform(cond), t.ReachabilityProbe(transform(thenn)), t.ReachabilityProbe(transform(elze)))
+  import s._
+  import exprOps._
 
-        case _ => super.transform(e) // go through the other expressions and transform recursively
+  override protected type TransformerContext = s.Symbols
+  override def getContext(symbols: s.Symbols): TransformerContext = symbols
 
+  private[this] class Identity(override val s: self.s.type, override val t: self.t.type) extends transformers.ConcreteTreeTransformer(s, t)
+  private[this] val identity = new Identity(self.s, self.t)
+
+  override protected type FunctionSummary = Unit
+
+  override def extractFunction(symbols: TransformerContext, fd: s.FunDef): (t.FunDef, FunctionSummary) = {
+    val specced = BodyWithSpecs(fd.fullBody)
+
+    def transform(e: s.Expr): s.Expr = e match {
+      case ie @ s.IfExpr(c, t, e) =>
+        s.IfExpr(transform(c), s.ReachabilityProbe(transform(t)), s.ReachabilityProbe(transform(e))).copiedFrom(ie)
+
+      case me @ s.MatchExpr(scrut, cases) =>
+        s.MatchExpr(scrut, cases.map {
+          cse => if cse.optGuard.isEmpty  then {
+            cse.copy(rhs = s.ReachabilityProbe(transform(cse.rhs))).copiedFrom(cse)
+          }
+          else {
+            cse.copy(optGuard = Option(transform(cse.optGuard.get)), rhs = s.ReachabilityProbe(transform(cse.rhs))).copiedFrom(cse)
+            
+          }
+        }).copiedFrom(me)
+
+      case _ => super.transform(e)
     }
+
+    val newSpecced = specced.copy(body = transform(specced.body))
+    (identity.transform(fd.copy(fullBody = newSpecced.reconstructed).setPos(fd)), new FunctionSummary)
+  }
 }
 
-object ReachabilityProbeInjector { self =>
-  def apply(tr: Trees)(using inox.Context): extraction.ExtractionPipeline {
+object ReachabilityProbeInjector {
+  def apply(tr: extraction.Trees)(using inox.Context): extraction.ExtractionPipeline {
     val s: tr.type
     val t: tr.type
   } = {

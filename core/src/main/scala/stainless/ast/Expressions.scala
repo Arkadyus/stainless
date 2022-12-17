@@ -93,8 +93,7 @@ trait Expressions extends inox.ast.Expressions with Types { self: Trees =>
     */
   sealed case class ReachabilityProbe(body: Expr) extends Expr with CachingTyped {
     override protected def computeType(using s: Symbols): Type = {
-      if (s.isSubtypeOf(body.getType, bodyType)) body.getType
-      else Untyped
+      body.getType
     }
   }
 
