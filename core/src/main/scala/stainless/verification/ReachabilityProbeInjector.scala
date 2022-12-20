@@ -24,9 +24,6 @@ class ReachabilityProbeInjector(override val s: extraction.Trees,
   override def getContext(symbols: s.Symbols): TransformerContext = symbols
 
   override protected type FunctionSummary = Unit
-  override protected final val funCache = new ExtractionCache[s.FunDef, (FunctionResult, FunctionSummary)]((fd, context) =>
-    getDependencyKey(fd.id)(context.symbols)  // TODO fix
-  )
 
   override def extractFunction(symbols: TransformerContext, fd: s.FunDef): (t.FunDef, FunctionSummary) = {
     object transformer extends stainless.transformers.TreeTransformer {
