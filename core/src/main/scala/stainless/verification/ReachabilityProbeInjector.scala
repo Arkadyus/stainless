@@ -4,45 +4,48 @@
 package stainless
 package verification
 
+
+object ReachabilityInjector extends inox.DebugSection("reachability-injector")
+
 class ReachabilityProbeInjector(override val s: extraction.Trees,
                      override val t: extraction.Trees)
                     (using override val context: inox.Context)
-  extends transformers.Transformer with extraction.SimpleFunctions with extraction.IdentitySorts { self =>
+  extends extraction.CachingPhase
+    with extraction.NoSummaryPhase
+    with extraction.IdentitySorts
+    with extraction.SimpleFunctions { self =>
 
-  import s._
+  import t._
   import exprOps._
+  import s._
 
   override protected type TransformerContext = s.Symbols
   override def getContext(symbols: s.Symbols): TransformerContext = symbols
 
-  private[this] class Identity(override val s: self.s.type, override val t: self.t.type) extends transformers.ConcreteTreeTransformer(s, t)
-  private[this] val identity = new Identity(self.s, self.t)
-
   override protected type FunctionSummary = Unit
+  override protected final val funCache = new ExtractionCache[s.FunDef, (FunctionResult, FunctionSummary)]((fd, context) =>
+    getDependencyKey(fd.id)(context.symbols)  // TODO fix
+  )
 
   override def extractFunction(symbols: TransformerContext, fd: s.FunDef): (t.FunDef, FunctionSummary) = {
-    val specced = BodyWithSpecs(fd.fullBody)
+    object transformer extends stainless.transformers.TreeTransformer {
+      override val s: self.s.type = self.s
+      override val t: self.t.type = self.t
 
-    def transform(e: s.Expr): s.Expr = e match {
-      case ie @ s.IfExpr(c, t, e) =>
-        s.IfExpr(transform(c), s.ReachabilityProbe(transform(t)), s.ReachabilityProbe(transform(e))).copiedFrom(ie)
-
-      case me @ s.MatchExpr(scrut, cases) =>
-        s.MatchExpr(scrut, cases.map {
-          cse => if cse.optGuard.isEmpty  then {
-            cse.copy(rhs = s.ReachabilityProbe(transform(cse.rhs))).copiedFrom(cse)
-          }
-          else {
-            cse.copy(optGuard = Option(transform(cse.optGuard.get)), rhs = s.ReachabilityProbe(transform(cse.rhs))).copiedFrom(cse)
-            
-          }
-        }).copiedFrom(me)
-
-      case _ => super.transform(e)
+      // As before but should return a t.Expr
+      override def transform(e: s.Expr): t.Expr = e match {
+        case s.IfExpr(c, th, e) =>
+          t.IfExpr(transform(c), t.ReachabilityProbe(transform(th)), t.ReachabilityProbe(transform(e)))
+        // case cse @ s.MatchCase(pat, optGuard, rhs) =>
+        //   if optGuard.isEmpty then {
+        //     t.MatchCase(transform(pat), Option.empty, t.ReachabilityProbe(transform(rhs))).copiedFrom(cse)
+        //   } else {
+        //     t.MatchCase(transform(pat), Option(transform(optGuard.get)), transform(rhs)).copiedFrom(cse)
+        //   }
+        case _ => super.transform(e)
+      }
     }
-
-    val newSpecced = specced.copy(body = transform(specced.body))
-    (identity.transform(fd.copy(fullBody = newSpecced.reconstructed).setPos(fd)), new FunctionSummary)
+    (transformer.transform(fd), ())
   }
 }
 
