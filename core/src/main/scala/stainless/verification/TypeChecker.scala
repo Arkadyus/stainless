@@ -731,6 +731,13 @@ class TypeChecker(val program: StainlessProgram, val context: inox.Context, val 
         val (tpe, tr2) = inferType(tc.withTruth(cond), body)
         (tpe, tr ++ tr2)
 
+      case ReachabilityProbe(body) =>
+        val cond = BooleanLiteral(false)
+        val kind = VCKind.Reachability
+        val tr = checkType(tc.withVCKind(kind).setPos(body), cond, TrueBoolean())
+        val (tpe, tr2) = inferType(tc.withTruth(cond), body)
+        (tpe, tr ++ tr2)
+
       // NOTE: `require` clauses in functions are type-checked in `checkType(FunDef)`, but since
       // they can also appear in lambdas bodies, they need to be handled here as well.
       case Require(cond, body) =>

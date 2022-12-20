@@ -322,6 +322,9 @@ trait VerificationChecker { self =>
             val status = checkAdtInvariantModel(vc, invId, model)
             VCResult(status, s.getResultSolver.map(_.name), Some(time))
 
+          case SatWithModel(model) if vc.kind.isInstanceOf[VCKind.Reachability.type] => 
+            VCResult(VCStatus.Valid, s.getResultSolver.map(_.name), Some(time))
+
           case SatWithModel(model) if !vc.satisfiability =>
             extraction.trace.Trace.reportCounterexample(program)(model)(vc.fid)
             VCResult(VCStatus.Invalid(VCStatus.CounterExample(model)), s.getResultSolver.map(_.name), Some(time))
@@ -329,8 +332,13 @@ trait VerificationChecker { self =>
           case Sat if vc.satisfiability =>
             VCResult(VCStatus.Valid, s.getResultSolver.map(_.name), Some(time))
 
+          case Unsat if vc.kind.isInstanceOf[VCKind.Reachability.type] =>
+            VCResult(VCStatus.Invalid(VCStatus.Unsatisfiable), s.getResultSolver.map(_.name), Some(time))
+
           case Unsat if vc.satisfiability =>
             VCResult(VCStatus.Invalid(VCStatus.Unsatisfiable), s.getResultSolver.map(_.name), Some(time))
+
+          
 
           case _ => sys.error(s"Unreachable: $res")
         }
