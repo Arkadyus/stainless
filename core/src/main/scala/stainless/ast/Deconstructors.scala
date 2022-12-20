@@ -146,7 +146,7 @@ trait TreeDeconstructor extends inox.ast.TreeDeconstructor {
     case s.Assert(pred, error, body) =>
       (Seq(), Seq(), Seq(pred, body), Seq(), Seq(), (_, _, es, _, _) => t.Assert(es(0), error, es(1)))
     case s.ReachabilityProbe(body) =>
-      (Seq(), Seq(), Seq(body), Seq(), Seq(), (_, _, es, _, _) => t.ReachabilityProbe(es(1)))
+      (Seq(), Seq(), Seq(body), Seq(), Seq(), (_, _, es, _, _) => t.ReachabilityProbe(es(0)))
     case s.Annotated(body, flags) =>
       (Seq(), Seq(), Seq(body), Seq(), flags, (_, _, es, _, flags) => {
         t.Annotated(es(0), flags)
