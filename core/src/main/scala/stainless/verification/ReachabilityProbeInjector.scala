@@ -4,13 +4,17 @@
 package stainless
 package verification
 
+
+object ReachabilityInjector extends inox.DebugSection("reachability-injector")
+
 class ReachabilityProbeInjector(override val s: extraction.Trees,
                      override val t: extraction.Trees)
                     (using override val context: inox.Context)
   extends extraction.CachingPhase with extraction.SimpleFunctions with extraction.IdentitySorts{ self =>
 
-  import s._
+  import t._
   import exprOps._
+  import s._
 
   override protected final val funCache = new ExtractionCache[s.FunDef, (FunctionResult, FunctionSummary)]((fd, symbols) =>
     getDependencyKey(fd.id)(using symbols)
@@ -20,6 +24,9 @@ class ReachabilityProbeInjector(override val s: extraction.Trees,
   override def getContext(symbols: s.Symbols): TransformerContext = symbols
 
   override protected type FunctionSummary = Unit
+  override protected final val funCache = new ExtractionCache[s.FunDef, (FunctionResult, FunctionSummary)]((fd, context) =>
+    getDependencyKey(fd.id)(context.symbols)  // TODO fix
+  )
 
   override def extractFunction(symbols: TransformerContext, fd: s.FunDef): (t.FunDef, FunctionSummary) = {
     object transformer extends stainless.transformers.TreeTransformer {
