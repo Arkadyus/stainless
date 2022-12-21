@@ -38,7 +38,9 @@ object VerificationReport {
                                               (using program.trees.PrinterOptions): Status = status match {
       case VCStatus.Invalid(VCStatus.CounterExample(model)) => Invalid("counter-example: " + model.asString)
       case VCStatus.Invalid(VCStatus.Unsatisfiable) => Invalid("unsatisfiable")
+      case VCStatus.Unreachable => Invalid("unreachable")
       case VCStatus.Valid => Valid
+      case VCStatus.Reachable(model) => Valid
       case VCStatus.ValidFromCache => ValidFromCache
       case VCStatus.Trivial => Trivial
       case inconclusive => Inconclusive(inconclusive.name)

@@ -108,6 +108,8 @@ object VCStatus {
   case object Crashed extends VCStatus[Nothing]("crashed")
   case object Unsupported extends VCStatus[Nothing]("unsupported")
   case object ExternalBug extends VCStatus[Nothing]("external bug")
+  case class Reachable[+Model](model: Model) extends VCStatus[Model]("reachable")
+  case object Unreachable extends VCStatus[Nothing]("unreachable")
 }
 
 case class VCResult[+Model](
@@ -115,10 +117,10 @@ case class VCResult[+Model](
   solverName: Option[String],
   time: Option[Long]
 ) {
-  def isValid           = status == VCStatus.Valid || isValidFromCache || isTrivial
+  def isValid           = status == VCStatus.Valid || isValidFromCache || isTrivial || status.isInstanceOf[VCStatus.Reachable[_]]
   def isValidFromCache  = status == VCStatus.ValidFromCache
   def isTrivial         = status == VCStatus.Trivial
   def isAdmitted        = status == VCStatus.Admitted
-  def isInvalid         = status.isInstanceOf[VCStatus.Invalid[_]]
+  def isInvalid         = status.isInstanceOf[VCStatus.Invalid[_]] || status == VCStatus.Unreachable
   def isInconclusive    = !isValid && !isInvalid
 }

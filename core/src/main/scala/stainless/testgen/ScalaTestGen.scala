@@ -26,6 +26,7 @@ object ScalaTestGen {
                        (using ctx: inox.Context): Unit = {
     val counterExs = res.toSeq.collect {
       case (vc, VCResult(VCStatus.Invalid(VCStatus.CounterExample(model)), _, _)) => (vc, model)
+      case (vc, VCResult(VCStatus.Reachable(model), _, _)) => (vc, model)
     }
     if (counterExs.isEmpty) {
       return
